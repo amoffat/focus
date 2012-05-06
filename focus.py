@@ -33,10 +33,21 @@ from datetime import datetime
 import json
 import sys
 import select
+from imp import reload
 
+
+
+IS_PY3 = sys.version_info[0] == 3
+if IS_PY3:
+    raw_input = input
+    unicode = str
+    xrange = range
+else:
+    pass
 
 __version__ = "0.1"
 __author__ = "Andrew Moffat <andrew.robert.moffat@gmail.com>"
+__project_url__ = "http://amoffat.github.com/focus"
 
 
 
@@ -102,7 +113,7 @@ request_types_inv = dict([(v,k) for k,v in request_types.items()])
 
 
 def read_pascal_string(data):
-    size = struct.unpack("!B", data[0])[0] + 1
+    size = struct.unpack("!B", data[0:1])[0] + 1
     return struct.unpack("!"+str(size)+"p", data[:size])[0]
 
 def create_pascal_string(data):
@@ -117,13 +128,13 @@ def parse_dns(packet):
     
     domain = []
     
-    while packet[0] != "\x00":
+    while packet[0:1] != b"\x00":
         s = read_pascal_string(packet)
         domain.append(s)
         packet = packet[len(s)+1:]
         
     packet = packet[1:]
-    domain = ".".join(domain)
+    domain = ".".join([part.decode("ascii") for part in domain])
     
     qtype, qclass = struct.unpack("!2H", packet[:4])
     
@@ -148,20 +159,20 @@ def build_blacklist_response(qid, domain, fail_ip, ttl):
     # 3, (ignore)
     # 4, ok status
     flags = 0x8400
-    packet = ""
+    packet = b""
     
     packet += struct.pack("!H", qid) # query id
     packet += struct.pack("!H", flags) # flags
     packet += struct.pack("!4H", 1, 1, 0, 0) # 1 question, 1 answer
     
     # repeat question
-    packet += "".join([create_pascal_string(chunk) for chunk in domain.split(".")])
-    packet += "\x00"
+    packet += "".join([create_pascal_string(chunk.encode("ascii")).decode("ascii") for chunk in domain.split(".")]).encode("ascii")
+    packet += b"\x00"
     packet += struct.pack("!2H", request_types["A"], 1)
     
     # answer
-    packet += "\xc0" # name is a pointer
-    packet += "\x0c" # offset
+    packet += b"\xc0" # name is a pointer
+    packet += b"\x0c" # offset
     packet += struct.pack("!2H", request_types["A"], 1)
     packet += struct.pack("!I", ttl)
     packet += struct.pack("!H", 4) # ip length
@@ -294,7 +305,7 @@ class ForwardedDNS(object):
         question_offset = 12
         answer_offset = question_offset
         for q in xrange(questions):
-            answer_offset += reply[answer_offset:].find("\x00") + 5
+            answer_offset += reply[answer_offset:].find(b"\x00") + 5
             
             
         # now that we know where the answers start, we can adjust the TTL in each
