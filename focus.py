@@ -323,7 +323,8 @@ if __name__ == "__main__":
     
     
     config.update(load_config())
-    nameservers = load_nameservers(resolv_conf)    
+    nameservers = load_nameservers(resolv_conf)
+    refresh_blacklist()    
     
     
     if config["bind_ip"] not in nameservers:
@@ -337,7 +338,6 @@ if __name__ == "__main__":
     if not nameservers:
         raise Exception("you need at least one other nameserver in %s" %
             resolve_conf)
-        
 
     # create our main server socket
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
