@@ -60,3 +60,17 @@ Configuration
 
 Focus.py tries to start with a sensible configuration, but if you need to change
 it, edit `/etc/focus.json.conf`
+
+
+FAQ
+===
+
+Q: I started Focus, but it's not blacklisting the site I picked.
+A: Your browser may be caching that site's ip.  Give it a few minutes.
+
+Q: Why do I need to start Focus with sudo?
+A: Focus needs to listen on a privileged port as a DNS server.
+
+Q: How do I stop Focus?
+A: You'll need to find the process id.  Try `sudo netstat --inet -anpu | grep :53`.
+After you identify the process listening on port 53, run `sudo kill -9` with the process id.
