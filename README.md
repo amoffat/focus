@@ -1,10 +1,17 @@
-Focus is a simple DNS-based firewall for Linux that helps you stop
+Focus.py is a simple DNS-based firewall for Linux that helps you stop
 procrastinating.  Just give it a list of sites you spend too much time on and
 enjoy not being to access them (easily :)
 
 
 Starting
 ========
+
+Add the following line to the top of your `/etc/resolv.conf`, *before* any
+other nameservers:
+
+    nameserver 127.0.0.1
+    
+Now start Focus:
 
     sudo python focus.py &
     
@@ -37,7 +44,7 @@ def default(domain, dt):
     return True
 ```
 
-The format is simple.  Just define a function named like the domain you
+The format is simple; Just define a function named like the domain you
 want to block.  Have it take a single datetime object and have it return True
 or False.  In the body, you can write whatever logic makes the most sense for
 you.  Maybe you want to write your own Pomodoro routine, or maybe you want to
@@ -51,5 +58,5 @@ There's no need to restart Focus if you redefine your schedules.
 Configuration
 =============
 
-Focus tries to start with a sensible configuration, but if you need to change
+Focus.py tries to start with a sensible configuration, but if you need to change
 it, edit `/etc/focus.json.conf`
