@@ -3,7 +3,7 @@ to distracting websites.  An example firewall rule looks like this:
 
 ``` python
 def domain_reddit_com(dt):
-    return dt.hour in (21, 22) # allow from 9-10pm
+    return dt.hour == 21 # allow from 9-10pm
 ```
 
 Starting
@@ -36,7 +36,7 @@ def domain_ycombinator_com(dt):
     return False
 
 def domain_reddit_com(dt):
-    # return dt.hour in (12, 21, 22) # at noon, or from 9-10pm
+    # return dt.hour in (12, 21) # at noon-1pm, or from 9-10pm
     return False
     
 def domain_facebook_com(dt):
