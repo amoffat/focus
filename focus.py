@@ -75,15 +75,15 @@ _default_blacklist = """
 import re
 
 
-def news_ycombinator_com(dt):
+def domain_news_ycombinator_com(dt):
     # return dt.hour % 2 # every other hour
     return False
 
-def reddit_com(dt):
+def domain_reddit_com(dt):
     # return dt.hour in (12, 21, 22) # at noon, or from 9-10pm
     return False
     
-def facebook_com(dt):
+def domain_facebook_com(dt):
     return False
 
 
@@ -199,7 +199,7 @@ def can_visit(domain):
     # and if one still isn't found, we go with default(), if it exists
     parts = domain.split(".")
     for i in xrange(len(parts)-1):
-        domain_fn_name = ".".join(parts[i:])
+        domain_fn_name = "domain_" + ".".join(parts[i:])
         domain_fn_name = re.sub("["+_domain_special_characters+"]", "_", domain_fn_name)
         fn = getattr(blacklist, domain_fn_name, None)
     
