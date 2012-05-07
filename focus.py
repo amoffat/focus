@@ -340,7 +340,7 @@ if __name__ == "__main__":
     
     if config["bind_ip"] not in nameservers:
         raise Exception("%s not a nameserver in %s, please add it" %
-            (bind_ip, resolv_conf))
+            (config["bind_ip"], resolv_conf))
     
     # if we don't remove the ip we've bound to from the list of fallback
     # nameservers, we run the risk of recursive dns lookups    
