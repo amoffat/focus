@@ -34,7 +34,7 @@ import json
 import sys
 import select
 from imp import reload
-
+import atexit
 
 
 IS_PY3 = sys.version_info[0] == 3
@@ -323,6 +323,9 @@ class ForwardedDNS(object):
             
         return reply
 
+def clean_up():
+    if exists('/var/run/focus.py.pid'):
+        os.remove('/var/run/focus.py.pid')
 
 
 if __name__ == "__main__":
@@ -331,7 +334,9 @@ if __name__ == "__main__":
         level=logging.INFO
     )
     log = logging.getLogger("server")
-    
+
+    with open('/var/run/focus.py.pid', 'a') as f: f.write(str(os.getpid()))
+    atexit.register(clean_up)
     
     config.update(load_config())
     nameservers = load_nameservers(resolv_conf)
