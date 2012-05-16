@@ -34,7 +34,7 @@ import json
 import sys
 import select
 from imp import reload
-
+import atexit
 
 
 IS_PY3 = sys.version_info[0] == 3
@@ -80,7 +80,7 @@ def domain_news_ycombinator_com(dt):
     return False
 
 def domain_reddit_com(dt):
-    # return dt.hour in (12, 21, 22) # at noon, or from 9-10pm
+    # return dt.hour in (12, 21) # at noon-1pm, or from 9-10pm
     return False
     
 def domain_facebook_com(dt):
@@ -323,6 +323,9 @@ class ForwardedDNS(object):
             
         return reply
 
+def clean_up():
+    if exists('/var/run/focus.py.pid'):
+        os.remove('/var/run/focus.py.pid')
 
 
 if __name__ == "__main__":
@@ -331,7 +334,9 @@ if __name__ == "__main__":
         level=logging.INFO
     )
     log = logging.getLogger("server")
-    
+
+    with open('/var/run/focus.py.pid', 'a') as f: f.write(str(os.getpid()))
+    atexit.register(clean_up)
     
     config.update(load_config())
     nameservers = load_nameservers(resolv_conf)
