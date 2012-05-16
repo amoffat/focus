@@ -63,6 +63,7 @@ config = {}
 resolv_conf = "/etc/resolv.conf"
 config_file = "/etc/focus.json.conf"
 blacklist_file = "/etc/focus_blacklist.py"
+pid_file = "/var/run/focus.py.pid"
 _default_config = {
     "bind_ip": "127.0.0.1",
     "fail_ip": "127.0.0.1",
@@ -323,9 +324,10 @@ class ForwardedDNS(object):
             
         return reply
 
-def clean_up():
-    if exists('/var/run/focus.py.pid'):
-        os.remove('/var/run/focus.py.pid')
+def clean_up_pid():
+    if exists(pid_file):
+        logging.info("cleaning up pid file")
+        os.remove(pid_file)
 
 
 if __name__ == "__main__":
@@ -335,8 +337,8 @@ if __name__ == "__main__":
     )
     log = logging.getLogger("server")
 
-    with open('/var/run/focus.py.pid', 'a') as f: f.write(str(os.getpid()))
-    atexit.register(clean_up)
+    with open(pid_file, "w") as f: f.write(str(os.getpid()))
+    atexit.register(clean_up_pid)
     
     config.update(load_config())
     nameservers = load_nameservers(resolv_conf)
