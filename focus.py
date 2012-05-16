@@ -331,9 +331,15 @@ def clean_up_pid():
 
 
 if __name__ == "__main__":
+
+    logfile = None
+    if sys.argv[1] == "--logfile":
+        logfile = sys.argv[2]
+
     logging.basicConfig(
         format="(%(process)d) %(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        level=logging.INFO
+        level=logging.INFO,
+        filename=logfile or ""
     )
     log = logging.getLogger("server")
 
