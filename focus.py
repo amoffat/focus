@@ -35,6 +35,7 @@ import sys
 import select
 from imp import reload
 import atexit
+from optparse import OptionParser
 
 
 IS_PY3 = sys.version_info[0] == 3
@@ -331,15 +332,14 @@ def clean_up_pid():
 
 
 if __name__ == "__main__":
-
-    logfile = None
-    if sys.argv[1] == "--logfile":
-        logfile = sys.argv[2]
+    cli_parser = OptionParser()
+    cli_parser.add_option("-l", "--log", dest="log", default=None)
+    cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
         format="(%(process)d) %(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.INFO,
-        filename=logfile or ""
+        filename=cli_options.log
     )
     log = logging.getLogger("server")
 
