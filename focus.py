@@ -34,7 +34,8 @@ import json
 import sys
 import select
 from imp import reload
-
+import atexit
+from optparse import OptionParser
 
 
 IS_PY3 = sys.version_info[0] == 3
@@ -63,6 +64,7 @@ config = {}
 resolv_conf = "/etc/resolv.conf"
 config_file = "/etc/focus.json.conf"
 blacklist_file = "/etc/focus_blacklist.py"
+pid_file = "/var/run/focus.py.pid"
 _default_config = {
     "bind_ip": "127.0.0.1",
     "fail_ip": "127.0.0.1",
@@ -80,7 +82,7 @@ def domain_news_ycombinator_com(dt):
     return False
 
 def domain_reddit_com(dt):
-    # return dt.hour in (12, 21, 22) # at noon, or from 9-10pm
+    # return dt.hour in (12, 21) # at noon-1pm, or from 9-10pm
     return False
     
 def domain_facebook_com(dt):
@@ -323,15 +325,26 @@ class ForwardedDNS(object):
             
         return reply
 
+def clean_up_pid():
+    if exists(pid_file):
+        logging.info("cleaning up pid file")
+        os.remove(pid_file)
 
 
 if __name__ == "__main__":
+    cli_parser = OptionParser()
+    cli_parser.add_option("-l", "--log", dest="log", default=None)
+    cli_options, cli_args = cli_parser.parse_args()
+
     logging.basicConfig(
         format="(%(process)d) %(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        level=logging.INFO
+        level=logging.INFO,
+        filename=cli_options.log
     )
     log = logging.getLogger("server")
-    
+
+    with open(pid_file, "w") as f: f.write(str(os.getpid()))
+    atexit.register(clean_up_pid)
     
     config.update(load_config())
     nameservers = load_nameservers(resolv_conf)

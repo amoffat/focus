@@ -1,7 +1,10 @@
-Focus.py is a simple DNS-based firewall for Linux that helps you stop
-procrastinating.  Just give it a list of sites you spend too much time on and
-enjoy not being to access them (easily :)
+Focus.py helps you keep focused by applying schedulable firewall rules
+to distracting websites.  An example firewall rule looks like this:
 
+``` python
+def domain_reddit_com(dt):
+    return dt.hour == 21 # allow from 9-10pm
+```
 
 Starting
 ========
@@ -16,14 +19,14 @@ Now start Focus:
     sudo python focus.py &
     
     
-Blocking Domains
-================
+Filtering Domains
+=================
 
 Firewall rules involving schedules and timeframes can get complicated fast.
 For this reason, the scheduling specification is pure Python, so you can make
-your blacklist schedules as simple or as complex as you want.
+your filtering rules as simple or as complex as you want.
 
-The default scheduler is created on first startup in `/etc/focus_blacklist.py`:
+The default filter rules is created on first startup in `/etc/focus_blacklist.py`:
 
 ```python
 import re
@@ -33,7 +36,7 @@ def domain_ycombinator_com(dt):
     return False
 
 def domain_reddit_com(dt):
-    # return dt.hour in (12, 21, 22) # at noon, or from 9-10pm
+    # return dt.hour in (12, 21) # at noon-1pm, or from 9-10pm
     return False
     
 def domain_facebook_com(dt):
@@ -49,7 +52,7 @@ want to block, preceeded by "domain_".  Have it take a single datetime object
 and have it return True or False.  In the body, you can write whatever logic
 makes the most sense for
 you.  Maybe you want to write your own Pomodoro routine, or maybe you want to
-scrape your google calendar for exam dates.
+scrape your google calendar for exam dates, and block certain websites on those dates.
 
 For sites without their own scheduler function, the default() function is called.
 
@@ -61,6 +64,17 @@ Configuration
 
 Focus.py tries to start with a sensible configuration, but if you need to change
 it, edit `/etc/focus.json.conf`
+
+
+How it works
+============
+
+Focus.py is, at its core, a DNS server.  By making it your primary nameserver,
+it receives all DNS lookup requests.  Based on the domain name being requested,
+it either responds with a "fail ip" address (blocked), or passes the request
+on to your other nameservers (not blocked).  In both cases, Focus adjusts the TTL of each
+DNS response so that the service requesting the DNS lookup will do minimal
+caching on the IP, allowing Focus's filtering rules to be more immediate.
 
 
 FAQ
