@@ -9,11 +9,20 @@ def domain_reddit_com(dt):
 Starting
 ========
 
+### Linux
+
 Add the following line to the top of your `/etc/resolv.conf`, *before* any
 other nameservers:
 
     nameserver 127.0.0.1
-    
+
+### Mac OS X
+
+Go to `System Preferences -> Network -> Advanced -> DNS` and add `127.0.0.1`
+as your DNS server.
+
+-----
+
 Now start Focus:
 
     sudo python focus.py &
