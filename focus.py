@@ -28,6 +28,7 @@ import socket
 import logging
 import time
 import os
+import time
 from os.path import exists
 from datetime import datetime
 import json
@@ -335,6 +336,7 @@ if __name__ == "__main__":
     cli_parser = OptionParser()
     cli_parser.add_option("-l", "--log", dest="log", default=None)
     cli_parser.add_option("-n", "--nameserver", dest="nameserver", default=None)
+    cli_parser.add_option("-w", "--wait", dest="wait", default=False, action="store_true")
     cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
@@ -363,6 +365,12 @@ if __name__ == "__main__":
     if not nameservers:
         if cli_options.nameserver:
             nameservers.append(cli_options.nameserver)
+        elif cli_options.wait:
+            while not nameservers:
+                nameservers = load_nameservers(resolv_conf)
+                nameservers.remove(config["bind_ip"])
+                time.sleep(5)
+
         else:
             raise Exception("you need at least one other nameserver in %s" %
             resolv_conf)
