@@ -334,6 +334,7 @@ def clean_up_pid():
 if __name__ == "__main__":
     cli_parser = OptionParser()
     cli_parser.add_option("-l", "--log", dest="log", default=None)
+    cli_parser.add_option("-n", "--nameserver", dest="nameserver", default=None)
     cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
@@ -347,10 +348,10 @@ if __name__ == "__main__":
     atexit.register(clean_up_pid)
     
     config.update(load_config())
-    nameservers = load_nameservers(resolv_conf)
     refresh_blacklist()    
     
     
+    nameservers = load_nameservers(resolv_conf)
     if config["bind_ip"] not in nameservers:
         raise Exception("%s not a nameserver in %s, please add it" %
             (config["bind_ip"], resolv_conf))
@@ -360,7 +361,10 @@ if __name__ == "__main__":
     nameservers.remove(config["bind_ip"])
     
     if not nameservers:
-        raise Exception("you need at least one other nameserver in %s" %
+        if cli_options.nameserver:
+            nameservers.append(cli_options.nameserver)
+        else:
+            raise Exception("you need at least one other nameserver in %s" %
             resolv_conf)
 
     # create our main server socket
