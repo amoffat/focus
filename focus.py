@@ -361,7 +361,7 @@ if __name__ == "__main__":
     
     if not nameservers:
         raise Exception("you need at least one other nameserver in %s" %
-            resolve_conf)
+            resolv_conf)
 
     # create our main server socket
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
