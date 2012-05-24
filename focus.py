@@ -24,6 +24,7 @@
 import struct
 import socket
 import re
+from random import choice
 import socket
 import logging
 import time
@@ -358,22 +359,32 @@ if __name__ == "__main__":
         raise Exception("%s not a nameserver in %s, please add it" %
             (config["bind_ip"], resolv_conf))
     
+    # if we've given a nameserver on the commandline, that should be the
+    # preferred nameserver
+    if cli_options.nameserver: nameservers.insert(0, cli_options.nameserver)
+
     # if we don't remove the ip we've bound to from the list of fallback
     # nameservers, we run the risk of recursive dns lookups    
     nameservers.remove(config["bind_ip"])
     
     if not nameservers:
-        if cli_options.nameserver:
-            nameservers.append(cli_options.nameserver)
-        elif cli_options.wait:
+        log.info("found no alternative nameservers")
+        if cli_options.wait:
+            log.info("waiting until a new nameserver is available in %s",
+                resolv_conf)
             while not nameservers:
                 nameservers = load_nameservers(resolv_conf)
                 nameservers.remove(config["bind_ip"])
                 time.sleep(5)
 
+            log.info("found an alternative nameserver")
+
         else:
             raise Exception("you need at least one other nameserver in %s" %
-            resolv_conf)
+                resolv_conf)
+
+
+    log.info("loaded %d alternative nameservers: %r", len(nameservers), nameservers)
 
     # create our main server socket
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -408,8 +419,10 @@ if __name__ == "__main__":
                     # adjust the TTL, so that lookups with us happen as frequently as
                     # possible
                     if can_visit(domain):
-                        log.info("%s for %r (%s) is allowed", qtype_readable, domain, qid)
-                        fdns = ForwardedDNS(sender, nameservers[0], question, config["ttl"])
+                        alt_ns = cli_options.nameserver or choice(nameservers)
+                        log.info("%s for %r (%s) is allowed, forwarding to %s",
+                            qtype_readable, domain, qid, alt_ns)
+                        fdns = ForwardedDNS(sender, alt_ns, question, config["ttl"])
                         readers.append(fdns)
                         continue
                         
