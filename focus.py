@@ -215,7 +215,7 @@ def can_visit(domain):
 
 
 
-def load_config():
+def load_config(config_file):
     config = {}
     
     if not exists(config_file):
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     with open(pid_file, "w") as f: f.write(str(os.getpid()))
     atexit.register(clean_up_pid)
     
-    config.update(load_config())
+    config.update(load_config(config_file))
     refresh_blacklist()    
     
     
