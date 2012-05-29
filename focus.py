@@ -374,7 +374,8 @@ if __name__ == "__main__":
                 resolv_conf)
             while not nameservers:
                 nameservers = load_nameservers(resolv_conf)
-                nameservers.remove(config["bind_ip"])
+                if config["bind_ip"] in nameservers:
+                    nameservers.remove(config["bind_ip"])
                 time.sleep(5)
 
             log.info("found an alternative nameserver")
