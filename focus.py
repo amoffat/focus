@@ -1,16 +1,16 @@
 #===============================================================================
 # Copyright (C) 2012 by Andrew Moffat
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -86,7 +86,7 @@ def domain_news_ycombinator_com(dt):
 def domain_reddit_com(dt):
     # return dt.hour in (12, 21) # at noon-1pm, or from 9-10pm
     return False
-    
+
 def domain_facebook_com(dt):
     return False
 
@@ -122,26 +122,26 @@ def read_pascal_string(data):
 
 def create_pascal_string(data):
     size = len(data)+1
-    return struct.pack("!"+str(size)+"p", data) 
+    return struct.pack("!"+str(size)+"p", data)
 
 
 def parse_dns(packet):
     """ parse out the pertinent information from the dns request packet """
     qid, flags, qcount, acount, auth_count, addl_count = struct.unpack("!6H", packet[:12])
     packet = packet[12:]
-    
+
     domain = []
-    
+
     while packet[0:1] != b"\x00":
         s = read_pascal_string(packet)
         domain.append(s)
         packet = packet[len(s)+1:]
-        
+
     packet = packet[1:]
     domain = ".".join([part.decode("ascii") for part in domain])
-    
+
     qtype, qclass = struct.unpack("!2H", packet[:4])
-    
+
     packet = packet[4:]
     return qid, domain, qtype
 
@@ -150,7 +150,7 @@ def parse_dns(packet):
 def build_blacklist_response(qid, domain, fail_ip, ttl):
     """ build a packet that directs our dns request to an ip that doesn't
     really belong to the domain...while saying we're authoritative """
-    
+
     # the flags are a little counter-intuitive
     # bits, flag:
     #
@@ -164,16 +164,16 @@ def build_blacklist_response(qid, domain, fail_ip, ttl):
     # 4, ok status
     flags = 0x8400
     packet = b""
-    
+
     packet += struct.pack("!H", qid) # query id
     packet += struct.pack("!H", flags) # flags
     packet += struct.pack("!4H", 1, 1, 0, 0) # 1 question, 1 answer
-    
+
     # repeat question
     packet += "".join([create_pascal_string(chunk.encode("ascii")).decode("ascii") for chunk in domain.split(".")]).encode("ascii")
     packet += b"\x00"
     packet += struct.pack("!2H", request_types["A"], 1)
-    
+
     # answer
     packet += b"\xc0" # name is a pointer
     packet += b"\x0c" # offset
@@ -188,10 +188,10 @@ def build_blacklist_response(qid, domain, fail_ip, ttl):
 
 def can_visit(domain):
     """ determine if the domain is blacklisted at this time """
-    
+
     refresh_blacklist()
-    
-    
+
+
     # here we do a cascading lookup for the function to run.  example:
     # for the domain "herp.derp.domain.com", first we try to find the
     # following functions in the following order:
@@ -206,40 +206,40 @@ def can_visit(domain):
         domain_fn_name = "domain_" + ".".join(parts[i:])
         domain_fn_name = re.sub("["+_domain_special_characters+"]", "_", domain_fn_name)
         fn = getattr(blacklist, domain_fn_name, None)
-    
+
         if fn: return fn(datetime.now())
-        
+
     fn = getattr(blacklist, "default", None)
     if fn: return fn(domain, datetime.now())
-        
+
     return True
 
 
 
 def load_config(config_file):
     config = {}
-    
+
     if not exists(config_file):
         log.error("couldn't find %s, creating with default values", config_file)
         with open(config_file, "w") as h: h.write(json.dumps(_default_config, indent=4))
-        
+
     with open(config_file, "r") as h: config.update(json.loads(h.read().strip() or "{}"))
-        
+
     config.setdefault("bind_ip", "127.0.0.1")
     config.setdefault("bind_port", 53)
     config.setdefault("fail_ip", "127.0.0.1")
     config.setdefault("ttl", 1)
-    
+
     # don't allow a ttl less than 1...google why its a bad idea
     if config["ttl"] < 1: config["ttl"] = 1
-    
+
     return config
 
 
 def refresh_blacklist():
     global _last_checked_blacklist, blacklist
-    
-    log = logging.getLogger("blacklist_refresher")    
+
+    log = logging.getLogger("blacklist_refresher")
 
     # we also check for not exists because the pyc file may be left around.
     # in that case, blacklist name will exist, but the file will not
@@ -247,7 +247,7 @@ def refresh_blacklist():
         log.error("couldn't find %s, creating a default blacklist", blacklist_file)
         with open(blacklist_file, "w") as h: h.write(_default_blacklist)
         import focus_blacklist as blacklist
-    
+
     # has it changed?
     changed = os.stat(blacklist_file).st_mtime
     if changed > _last_checked_blacklist:
@@ -279,7 +279,7 @@ class ForwardedDNS(object):
     """ the purpose of this class is to encapsulate necessary state and
     related helper methods, for when a forwarded dns socket gets put into
     the select.select() list of readers """
-    
+
     def __init__(self, sender, ns, packet, adjust_ttl=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(0)
@@ -287,10 +287,10 @@ class ForwardedDNS(object):
         self._adjust_ttl = adjust_ttl
         self.sender = sender
         self.created = time.time()
-    
+
     def __del__(self):
         self.sock.close()
-    
+
     def fileno(self):
         return self.sock.fileno()
 
@@ -298,33 +298,33 @@ class ForwardedDNS(object):
         answer, addr = self.sock.recvfrom(1024)
         if self._adjust_ttl: answer = self.adjust_ttl_in_reply(answer, self._adjust_ttl)
         return answer, self.sender
-    
+
     def adjust_ttl_in_reply(self, reply, ttl):
         # essentially what we need to do with all of this is find the beginning
         # of the answer packets, so that we can replace the TTL.  so we do some
         # calculations to figure out where the answers start
         questions = struct.unpack("!H", reply[4:6])[0]
         answers = struct.unpack("!H", reply[6:8])[0]
-        
+
         question_offset = 12
         answer_offset = question_offset
         for q in xrange(questions):
             answer_offset += reply[answer_offset:].find(b"\x00") + 5
-            
-            
+
+
         # now that we know where the answers start, we can adjust the TTL in each
         # answer, and then forward the answer_offset to the next answer, so that
         # we can repeat the process
         for i in xrange(answers):
             ttl_offset = answer_offset + 6
-            
+
             old_ttl = struct.unpack("!I", reply[ttl_offset: ttl_offset + 4])[0]
             reply = reply[:ttl_offset] + struct.pack("!I", ttl) + reply[ttl_offset + 4:]
-            
+
             ip_length_offset = ttl_offset + 4
             ip_length = struct.unpack("!H", reply[ip_length_offset: ip_length_offset + 2])[0]
             answer_offset = ip_length_offset + 2 + ip_length
-            
+
         return reply
 
 def clean_up_pid():
@@ -332,12 +332,33 @@ def clean_up_pid():
         logging.info("cleaning up pid file")
         os.remove(pid_file)
 
+def get_unprivileged_uid():
+    if os.getuid() != os.geteuid():
+        return os.getuid()
+    elif "SUDO_UID" in os.environ:
+        return int(os.environ.get("SUDO_UID"))
+    else:
+        # Kludge, retains privileges
+        return os.getuid()
+
+def drop_privileges(uid, gid):
+    # Once everything is done, drop our privs
+    if cli_options.log:
+        with open(cli_options.log, 'r') as f:
+            os.fchown(f.fileno(), uid, -1)
+    if uid not in [os.getuid(), -1]:
+        os.setuid(uid)
+    if gid not in [os.getgid(), -1]:
+        os.setgid(gid)
 
 if __name__ == "__main__":
+    global log
+
     cli_parser = OptionParser()
     cli_parser.add_option("-l", "--log", dest="log", default=None)
     cli_parser.add_option("-n", "--nameserver", dest="nameserver", default=None)
     cli_parser.add_option("-w", "--wait", dest="wait", default=False, action="store_true")
+    cli_parser.add_option("-u", "--uid", dest="uid", default=get_unprivileged_uid(), action="store", type=int)
     cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
@@ -347,26 +368,40 @@ if __name__ == "__main__":
     )
     log = logging.getLogger("server")
 
-    with open(pid_file, "w") as f: f.write(str(os.getpid()))
+    with open(pid_file, "w") as f:
+        # Drop ownership of the pidfile
+        os.fchown(f.fileno(), get_unprivileged_uid(), -1)
+        f.write(str(os.getpid()))
     atexit.register(clean_up_pid)
-    
+
     config.update(load_config(config_file))
-    refresh_blacklist()    
-    
-    
+    # Bind our socket before we do pretty much anything, this means we can drop
+    # privileges early, which is a necessaity before we start logging
+    #
+    # create our main server socket
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.setblocking(0)
+    server.bind((config["bind_ip"], config["bind_port"]))
+
+    # We're done doing things that need root, drop our privileges
+    drop_privileges(cli_options.uid, -1)
+
+    refresh_blacklist()
+
+
     nameservers = load_nameservers(resolv_conf)
     if config["bind_ip"] not in nameservers:
         raise Exception("%s not a nameserver in %s, please add it" %
             (config["bind_ip"], resolv_conf))
-    
+
     # if we've given a nameserver on the commandline, that should be the
     # preferred nameserver
     if cli_options.nameserver: nameservers.insert(0, cli_options.nameserver)
 
     # if we don't remove the ip we've bound to from the list of fallback
-    # nameservers, we run the risk of recursive dns lookups    
+    # nameservers, we run the risk of recursive dns lookups
     nameservers.remove(config["bind_ip"])
-    
+
     if not nameservers:
         log.info("found no alternative nameservers")
         if cli_options.wait:
@@ -387,31 +422,26 @@ if __name__ == "__main__":
 
     log.info("loaded %d alternative nameservers: %r", len(nameservers), nameservers)
 
-    # create our main server socket
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.setblocking(0)
-    server.bind((config["bind_ip"], config["bind_port"]))
-    
     readers = [server]
     last_cleaned_readers = 0
-    
-    
+
+
     # start our main select loop
     while True:
         to_read, to_write, to_err = select.select(readers, [], [])
-        
+
         for sock in to_read:
             if isinstance(sock, ForwardedDNS):
                 reply, sender = sock.get_answer()
                 readers.remove(sock)
-                
+
             elif sock is server:
                 question, sender = server.recvfrom(1024)
-                
+
                 qid, domain, qtype = parse_dns(question)
                 qtype_readable = request_types_inv.get(qtype, "UNKNOWN")
-                
-                
+
+
                 # a request for an ip for a domain
                 if qtype is request_types["A"]:
                     # if we can visit it now, it might be either A) not on the blacklist
@@ -426,25 +456,25 @@ if __name__ == "__main__":
                         fdns = ForwardedDNS(sender, alt_ns, question, config["ttl"])
                         readers.append(fdns)
                         continue
-                        
+
                     # if we can't visit it now, direct it to the FAIL_IP
                     else:
                         log.info("%s for %r (%s) is BLOCKED, pointing to %s", qtype_readable, domain, qid, config["fail_ip"])
                         reply = build_blacklist_response(qid, domain, config["fail_ip"], config["ttl"])
-                        
-                    
+
+
                 # all other types of requests..MX, CNAME, etc, just let the regular
                 # nameservers look those up, and don't adjust ttl
                 else:
                     log.info("%s for %r (%s) is allowed", qtype_readable, domain, qid)
-                    fdns = ForwardedDNS(sender, nameservers[0], question)                        
+                    fdns = ForwardedDNS(sender, nameservers[0], question)
                     readers.append(fdns)
                     continue
 
 
             server.sendto(reply, sender)
-            
-        
+
+
         # occasionally we'll have created a ForwardedDNS request that never
         # gets read from, for one reason or another.  maybe the packet got
         # dropped along the way.  in any case, we don't want these dead
@@ -459,6 +489,6 @@ if __name__ == "__main__":
                     cleaned += 1
             log.info("cleaning out %d dead requests", cleaned)
             last_cleaned_readers = now
-        
-    
+
+
     server.close()
