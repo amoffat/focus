@@ -38,6 +38,7 @@ import select
 from imp import reload
 import atexit
 from optparse import OptionParser
+import signal
 
 
 IS_PY3 = sys.version_info[0] == 3
@@ -338,6 +339,7 @@ if __name__ == "__main__":
     cli_parser.add_option("-l", "--log", dest="log", default=None)
     cli_parser.add_option("-n", "--nameserver", dest="nameserver", default=None)
     cli_parser.add_option("-w", "--wait", dest="wait", default=False, action="store_true")
+    cli_parser.add_option("-k", "--kill", dest="kill", default=False, action="store_true")
     cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
@@ -346,6 +348,17 @@ if __name__ == "__main__":
         filename=cli_options.log
     )
     log = logging.getLogger("server")
+
+    if cli_options.kill:
+        try:
+            with open(pid_file, "r") as f:
+                log.info("sending SIGTERM to pid %s" % pid)
+                pid = f.readline().strip()
+                os.kill(int(pid), signal.SIGTERM)
+                exit(0)
+        except IOError:
+            log.warning("Couldn't open pidfile")
+            exit(1)
 
     with open(pid_file, "w") as f: f.write(str(os.getpid()))
     atexit.register(clean_up_pid)
