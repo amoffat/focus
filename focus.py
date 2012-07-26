@@ -357,7 +357,7 @@ if __name__ == "__main__":
                 os.kill(int(pid), signal.SIGTERM)
                 exit(0)
         except IOError:
-            log.warning("Couldn't open pidfile")
+            log.warning("Couldn't find pidfile.  Please manually find and kill any existing focus.py process")
             exit(1)
 
     with open(pid_file, "w") as f: f.write(str(os.getpid()))
