@@ -352,8 +352,8 @@ if __name__ == "__main__":
     if cli_options.kill:
         try:
             with open(pid_file, "r") as f:
-                log.info("sending SIGTERM to pid %s" % pid)
                 pid = f.readline().strip()
+                log.info("sending SIGTERM to pid %s" % pid)
                 os.kill(int(pid), signal.SIGTERM)
                 exit(0)
         except IOError:
