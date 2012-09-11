@@ -331,15 +331,38 @@ class ForwardedDNS(object):
 def clean_up_pid():
     if exists(pid_file):
         logging.info("cleaning up pid file")
-        os.remove(pid_file)
+        # kludge, but we can't remove the pid file anymore, since we dropped privs
+        h = open(pid_file, "w")
+        h.close()
 
+def get_unprivileged_uid():
+    if os.getuid() != os.geteuid():
+        return os.getuid()
+    elif "SUDO_UID" in os.environ:
+        return int(os.environ.get("SUDO_UID"))
+    else:
+        # Kludge, retains privileges
+        return os.getuid()
+
+def drop_privileges(uid, gid):
+    # Once everything is done, drop our privs
+    if cli_options.log:
+        with open(cli_options.log, 'r') as f:
+            os.fchown(f.fileno(), uid, -1)
+    if uid not in [os.getuid(), -1]:
+        os.setuid(uid)
+    if gid not in [os.getgid(), -1]:
+        os.setgid(gid)
 
 if __name__ == "__main__":
+    global log
+
     cli_parser = OptionParser()
     cli_parser.add_option("-l", "--log", dest="log", default=None)
     cli_parser.add_option("-n", "--nameserver", dest="nameserver", default=None)
     cli_parser.add_option("-w", "--wait", dest="wait", default=False, action="store_true")
     cli_parser.add_option("-k", "--kill", dest="kill", default=False, action="store_true")
+    cli_parser.add_option("-u", "--uid", dest="uid", default=get_unprivileged_uid(), action="store", type=int)
     cli_options, cli_args = cli_parser.parse_args()
 
     logging.basicConfig(
@@ -353,17 +376,36 @@ if __name__ == "__main__":
         try:
             with open(pid_file, "r") as f:
                 pid = f.readline().strip()
+                if not pid: raise IOError("no pid in pid file")
                 log.info("sending SIGTERM to pid %s" % pid)
                 os.kill(int(pid), signal.SIGTERM)
                 exit(0)
         except IOError:
-            log.warning("Couldn't find pidfile.  Please manually find and kill any existing focus.py process")
+            log.warning("Couldn't find pidfile or pid file was empty.  Please \
+manually find and kill any existing focus.py process")
             exit(1)
 
-    with open(pid_file, "w") as f: f.write(str(os.getpid()))
+    with open(pid_file, "w") as f:
+        # Drop ownership of the pidfile
+        os.fchown(f.fileno(), get_unprivileged_uid(), -1)
+        f.write(str(os.getpid()))
     atexit.register(clean_up_pid)
 
     config.update(load_config(config_file))
+    # Bind our socket before we do pretty much anything, this means we can drop
+    # privileges early, which is a necessaity before we start logging
+    #
+    # create our main server socket
+    try:
+        log.info("binding to %s:%d", config["bind_ip"], config["bind_port"])
+        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server.setblocking(0)
+        server.bind((config["bind_ip"], config["bind_port"]))
+
+    # We're done doing things that need root, drop our privileges
+    finally:
+        drop_privileges(cli_options.uid, -1)
+
     refresh_blacklist()
 
 
@@ -399,11 +441,6 @@ if __name__ == "__main__":
 
 
     log.info("loaded %d alternative nameservers: %r", len(nameservers), nameservers)
-
-    # create our main server socket
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.setblocking(0)
-    server.bind((config["bind_ip"], config["bind_port"]))
 
     readers = [server]
     last_cleaned_readers = 0
